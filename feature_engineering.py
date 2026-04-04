@@ -1,109 +1,77 @@
 """
-feature_engineering.py
------------------------
-Loads raw stock data, calculates professional technical indicators,
-and saves an enriched dataset ready for EDA and ML modeling.
-
-Technical indicators calculated:
-  - Simple Moving Averages (SMA 5, 20, 50)
-  - Exponential Moving Averages (EMA 12, 26)
-  - MACD & Signal Line
-  - Relative Strength Index (RSI 14)
-  - Bollinger Bands (upper, lower, width)
-  - Daily & 5-day returns
-  - Volume moving average
-  - Target variable: next-day price direction (1=up, 0=down)
+generate_mock_data.py
+---------------------
+Generates 3 years of realistic daily OHLCV stock data for 5 tickers
+using Geometric Brownian Motion (the industry-standard price simulation model).
+Saves to CSV files in the data/ folder.
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+import os
+
+os.makedirs("data", exist_ok=True)
+np.random.seed(42)
+
+# --- Config ---
+TICKERS = {
+    "AAPL":  {"start_price": 150.0, "mu": 0.0003, "sigma": 0.018},
+    "MSFT":  {"start_price": 280.0, "mu": 0.0004, "sigma": 0.016},
+    "GOOGL": {"start_price": 100.0, "mu": 0.0003, "sigma": 0.020},
+    "AMZN":  {"start_price": 120.0, "mu": 0.0002, "sigma": 0.022},
+    "TSLA":  {"start_price": 200.0, "mu": 0.0005, "sigma": 0.035},
+}
+
+START_DATE = "2022-01-03"
+END_DATE   = "2024-12-31"
+
+trading_days = pd.bdate_range(start=START_DATE, end=END_DATE)
 
 
-def compute_rsi(series, period=14):
-    delta = series.diff()
-    gain  = delta.clip(lower=0)
-    loss  = -delta.clip(upper=0)
-    avg_gain = gain.ewm(com=period - 1, min_periods=period).mean()
-    avg_loss = loss.ewm(com=period - 1, min_periods=period).mean()
-    rs  = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
+def simulate_ohlcv(ticker, config, dates):
+    """Simulate daily OHLCV data using Geometric Brownian Motion."""
+    n = len(dates)
+    mu    = config["mu"]
+    sigma = config["sigma"]
+    S0    = config["start_price"]
 
+    # Daily log returns
+    daily_returns = np.random.normal(mu - 0.5 * sigma**2, sigma, n)
+    prices = S0 * np.exp(np.cumsum(daily_returns))
 
-def compute_bollinger_bands(series, window=20, num_std=2):
-    sma    = series.rolling(window).mean()
-    std    = series.rolling(window).std()
-    upper  = sma + num_std * std
-    lower  = sma - num_std * std
-    width  = (upper - lower) / sma
-    return upper, lower, width
+    # Intraday range: high/low around close
+    intraday_range = np.abs(np.random.normal(0, sigma * 1.5, n)) * prices
+    high  = prices + intraday_range * np.random.uniform(0.3, 0.7, n)
+    low   = prices - intraday_range * np.random.uniform(0.3, 0.7, n)
+    open_ = low + (high - low) * np.random.uniform(0.2, 0.8, n)
+    low   = np.minimum(low, np.minimum(open_, prices))
+    high  = np.maximum(high, np.maximum(open_, prices))
 
+    # Volume: higher on volatile days
+    base_volume   = np.random.randint(20_000_000, 80_000_000)
+    volume_factor = 1 + 5 * np.abs(daily_returns / sigma)
+    volume        = (base_volume * volume_factor * np.random.uniform(0.8, 1.2, n)).astype(int)
 
-def add_features(df):
-    """Add all technical indicators to a single-ticker dataframe."""
-    df = df.sort_values("date").copy()
-    close  = df["close"]
-    volume = df["volume"]
-
-    # --- Moving Averages ---
-    df["sma_5"]  = close.rolling(5).mean()
-    df["sma_20"] = close.rolling(20).mean()
-    df["sma_50"] = close.rolling(50).mean()
-    df["ema_12"] = close.ewm(span=12, adjust=False).mean()
-    df["ema_26"] = close.ewm(span=26, adjust=False).mean()
-
-    # --- MACD ---
-    df["macd"]        = df["ema_12"] - df["ema_26"]
-    df["macd_signal"] = df["macd"].ewm(span=9, adjust=False).mean()
-    df["macd_hist"]   = df["macd"] - df["macd_signal"]
-
-    # --- RSI ---
-    df["rsi_14"] = compute_rsi(close, 14)
-
-    # --- Bollinger Bands ---
-    df["bb_upper"], df["bb_lower"], df["bb_width"] = compute_bollinger_bands(close)
-    df["bb_position"] = (close - df["bb_lower"]) / (df["bb_upper"] - df["bb_lower"])
-
-    # --- Returns ---
-    df["daily_return"]  = close.pct_change()
-    df["return_5d"]     = close.pct_change(5)
-    df["return_20d"]    = close.pct_change(20)
-    df["log_return"]    = np.log(close / close.shift(1))
-
-    # --- Volatility ---
-    df["volatility_20d"] = df["log_return"].rolling(20).std() * np.sqrt(252)
-
-    # --- Volume ---
-    df["volume_ma_20"]   = volume.rolling(20).mean()
-    df["volume_ratio"]   = volume / df["volume_ma_20"]
-
-    # --- Price position ---
-    df["high_low_range"] = (df["high"] - df["low"]) / close
-    df["price_vs_sma20"] = (close - df["sma_20"]) / df["sma_20"]
-
-    # --- Target: next-day direction ---
-    df["target"] = (close.shift(-1) > close).astype(int)
-
+    df = pd.DataFrame({
+        "date":   dates,
+        "ticker": ticker,
+        "open":   open_.round(2),
+        "high":   high.round(2),
+        "low":    low.round(2),
+        "close":  prices.round(2),
+        "volume": volume,
+    })
     return df
 
 
-# --- Main ---
-print("Loading raw stock data...")
-stocks = pd.read_csv("data/stocks.csv", parse_dates=["date"])
+# --- Generate all tickers ---
+all_data = []
+for ticker, config in TICKERS.items():
+    print(f"Generating data for {ticker}...")
+    df = simulate_ohlcv(ticker, config, trading_days)
+    all_data.append(df)
 
-print("Computing technical indicators for each ticker...")
-enriched_frames = []
-for ticker, group in stocks.groupby("ticker"):
-    print(f"  Processing {ticker}...")
-    enriched = add_features(group)
-    enriched_frames.append(enriched)
-
-enriched_df = pd.concat(enriched_frames, ignore_index=True)
-
-# Drop rows with NaN (from rolling windows)
-enriched_df.dropna(inplace=True)
-
-enriched_df.to_csv("data/stocks_features.csv", index=False)
-print(f"\nSaved {len(enriched_df):,} rows to data/stocks_features.csv")
-print(f"Features: {list(enriched_df.columns)}")
-print(f"\nTarget distribution:\n{enriched_df['target'].value_counts(normalize=True).round(3)}")
+stocks_df = pd.concat(all_data, ignore_index=True)
+stocks_df.to_csv("data/stocks.csv", index=False)
+print(f"\nSaved {len(stocks_df):,} rows to data/stocks.csv")
+print(stocks_df.groupby("ticker")[["close"]].agg(["min", "max", "mean"]).round(2))
