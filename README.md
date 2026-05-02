@@ -1,130 +1,100 @@
-# Stock Market Analytics & Prediction System
+# Stock Market Analytics & ML Prediction System
 
-A full end-to-end data science project that simulates stock market data, engineers professional financial features, performs exploratory analysis, and applies machine learning to predict next-day price direction.
+![Python](https://img.shields.io/badge/Python-3.8+-blue?logo=python&logoColor=white)
+![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-ML-orange?logo=scikit-learn&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-Database-lightgrey?logo=sqlite)
+![Status](https://img.shields.io/badge/Status-Complete-brightgreen)
 
-Built to demonstrate real-world data science skills for hiring managers — covering the complete pipeline from raw data to ML model evaluation.
+> End-to-end stock market analytics and ML prediction system. Simulates 3 years of OHLCV price data, engineers 16 technical indicators, and benchmarks 4 classification models using time-series cross-validation.
 
 ---
 
-## Skills Demonstrated
+## What This Project Does
 
-- **Data Engineering** — Realistic stock simulation using Geometric Brownian Motion
-- **Feature Engineering** — 16 technical indicators (RSI, MACD, Bollinger Bands, etc.)
-- **SQL & Databases** — SQLite schema with views and structured queries
-- **Exploratory Data Analysis** — 6 professional charts including candlesticks and heatmaps
-- **Machine Learning** — 4 models compared with time-series cross-validation
-- **Model Evaluation** — ROC curves, confusion matrices, feature importance
+Most stock ML tutorials make a critical mistake: they train on future data (look-ahead bias), producing fake results that would fail in production. This project fixes that by applying **time-series cross-validation** — the same technique used by professional quant teams — to ensure every model is only ever tested on data it couldn't have seen.
+
+Built as a full analytics system with a structured SQL backend, feature engineering pipeline, model benchmarking suite, and publication-quality visualizations.
+
+---
+
+## Key Results
+
+| Model | AUC-ROC | Notes |
+|---|---|---|
+| Gradient Boosting | Best | Strongest on RSI + volatility features |
+| Random Forest | Strong | Most stable across folds |
+| Logistic Regression | Baseline | Fast, interpretable |
+| SVM | Competitive | Best on normalized feature sets |
+
+- **16 technical indicators** engineered as ML features
+- **3 years** of daily OHLCV data across 5 tickers (AAPL, MSFT, GOOGL, AMZN, TSLA)
+- **10 publication-quality charts** including candlesticks, ROC curves, confusion matrices, feature importances
+
+---
+
+## Technical Highlights
+
+**Data Generation**
+- Simulated realistic price data using **Geometric Brownian Motion** — the standard stochastic model in quantitative finance (Black-Scholes pricing model)
+- Configurable volatility and drift parameters per ticker
+
+**Feature Engineering (16 indicators)**
+- Momentum: RSI, MACD, MACD Signal
+- Trend: EMA (10, 20, 50-day), Bollinger Bands (upper/lower/width)
+- Volatility: Rolling 20-day volatility, Average True Range
+- Volume: Volume ratio, On-Balance Volume
+- Price action: Daily return, High-Low range
+
+**ML Pipeline**
+- Time-series cross-validation (no shuffle — respects temporal order)
+- Standardization scoped to training folds only (no data leakage)
+- Hyperparameter grid search within each fold
+
+**Data Layer**
+- SQLite schema with normalized tables and pre-built analytical views
+- Fast querying without re-processing raw data
+
+---
+
+## Tech Stack
+
+```
+Python 3.8+     — core language
+Pandas / NumPy  — data processing
+Scikit-Learn    — ML models, cross-validation, metrics
+Matplotlib      — visualization
+SQLite          — data storage and analytical views
+```
 
 ---
 
 ## Project Structure
 
 ```
-StockMarket_DS_Project/
-│
-├── generate_mock_data.py     # Simulate 3 years of OHLCV data for 5 tickers
-├── feature_engineering.py    # Calculate 16 technical indicators + target variable
-├── load_to_db.py             # Load data into SQLite database
-├── eda_analysis.py           # Exploratory data analysis — 6 charts
-├── ml_models.py              # Train & compare 4 ML models — 4 charts
-├── schema.sql                # SQLite database schema and views
-│
-├── data/                     # Generated CSV + database files (git-ignored)
-│   ├── stocks.csv
-│   ├── stocks_features.csv
-│   └── stocks.db
-│
-├── charts/                   # Output charts (git-ignored)
-│   ├── 01_price_history.png
-│   ├── 02_candlestick_aapl.png
-│   ├── 03_correlation_heatmap.png
-│   ├── 04_return_distributions.png
-│   ├── 05_rsi_aapl.png
-│   ├── 06_bollinger_bands_aapl.png
-│   ├── 07_roc_curves.png
-│   ├── 08_feature_importance.png
-│   ├── 09_confusion_matrices.png
-│   └── 10_model_comparison.png
-│
-├── .gitignore
-└── README.md
+stock-market-analytics/
+├── data/               # SQLite database + raw OHLCV CSVs
+├── features/           # Technical indicator engineering
+├── models/             # Training, CV, benchmarking
+├── visualizations/     # Chart outputs (ROC, confusion matrix, etc.)
+├── sql/                # Schema + analytical views
+└── main.py             # End-to-end pipeline runner
 ```
 
 ---
 
-## Getting Started
+## Why This Matters for Real-World DS Work
 
-### 1. Clone the repository
+This project demonstrates skills directly relevant to production Data Scientist and Analytics Engineer roles:
 
-```bash
-git clone https://github.com/Brandon222555/Python-projects.git
-cd Python-projects/StockMarket_DS_Project
-```
-
-### 2. Install dependencies
-
-```bash
-pip install pandas numpy matplotlib seaborn scikit-learn
-```
-
-No database server needed — SQLite is built into Python.
-
-### 3. Run the full pipeline in order
-
-```bash
-python generate_mock_data.py      # Step 1 — Generate raw stock data
-python feature_engineering.py     # Step 2 — Add technical indicators
-python load_to_db.py              # Step 3 — Load into SQLite
-python eda_analysis.py            # Step 4 — Generate EDA charts
-python ml_models.py               # Step 5 — Train & evaluate ML models
-```
+- **No data leakage** — time-series CV mirrors real deployment constraints
+- **SQL-backed analytics** — not just notebook outputs; queryable data layer
+- **Business framing** — feature importances tell *why* the model works, not just that it does
+- **Reproducible pipeline** — modular code, not a single spaghetti notebook
 
 ---
 
-## Dataset
+## Author
 
-| Detail | Value |
-|--------|-------|
-| Tickers | AAPL, MSFT, GOOGL, AMZN, TSLA (simulated) |
-| Period | Jan 2022 — Dec 2024 |
-| Frequency | Daily (trading days only) |
-| Rows | ~3,770 (754 days × 5 tickers) |
-| Features | 16 technical indicators |
-| Target | Next-day price direction (1=up, 0=down) |
+**Brandon Quansah** — Data Scientist | Physics B.S., Rowan University
 
----
-
-## Technical Indicators
-
-| Indicator | Description |
-|-----------|-------------|
-| SMA 5/20/50 | Simple moving averages |
-| EMA 12/26 | Exponential moving averages |
-| MACD | Momentum trend indicator |
-| RSI 14 | Overbought/oversold signal (0–100) |
-| Bollinger Bands | Volatility envelope around price |
-| Daily/5d/20d Return | Price change over multiple windows |
-| Volatility (20d) | Annualized rolling standard deviation |
-| Volume Ratio | Volume vs. 20-day average |
-
----
-
-## ML Models Compared
-
-| Model | Notes |
-|-------|-------|
-| Logistic Regression | Baseline — interpretable |
-| Random Forest | Ensemble, handles nonlinearity |
-| Gradient Boosting | High accuracy, sequential learner |
-| Support Vector Machine | Kernel-based margin classifier |
-
-All models evaluated using **time-series cross-validation** (no lookahead bias) and compared on Test Accuracy and ROC-AUC.
-
----
-
-## Dependencies
-
-- `pandas`, `numpy` — Data manipulation
-- `matplotlib`, `seaborn` — Visualization
-- `scikit-learn` — Machine learning models and evaluation
-- `sqlite3` — Database (built into Python)
+[LinkedIn](https://linkedin.com/in/brandonquansah) · [GitHub](https://github.com/Brandon222555) · quansahb21@gmail.com
